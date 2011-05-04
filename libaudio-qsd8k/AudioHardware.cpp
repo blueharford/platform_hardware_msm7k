@@ -119,7 +119,7 @@ AudioHardware::AudioHardware() :
 
     acoustic =:: dlopen("/system/lib/libhtc_acoustic.so", RTLD_NOW);
     if (acoustic == NULL ) {
-        LOGD("Could not open libhtc_acoustic.so");
+        LOGE("Could not open libhtc_acoustic.so");
         /* this is not really an error on non-htc devices... */
         mNumBTEndpoints = 0;
         mInit = true;
@@ -133,30 +133,30 @@ AudioHardware::AudioHardware() :
 
     set_tpa2018d1_parameters = (int (*)(void))::dlsym(acoustic, "set_tpa2018d1_parameters");
     if ((*set_tpa2018d1_parameters) == 0) {
-        LOGD("set_tpa2018d1_parameters() not present");
+        LOGI("set_tpa2018d1_parameters() not present");
         support_tpa2018d1 = false;
     }
 
     int rc = set_acoustic_parameters();
     if (rc < 0) {
-        LOGD("Could not set acoustic parameters to share memory: %d", rc);
+        LOGE("Could not set acoustic parameters to share memory: %d", rc);
     }
 
     if (support_tpa2018d1) {
        rc = set_tpa2018d1_parameters();
        if (rc < 0) {
            support_tpa2018d1 = false;
-           LOGD("speaker amplifier tpa2018 is not supported\n");
+           LOGE("speaker amplifier tpa2018 is not supported\n");
        }
     }
 
     snd_get_num = (int (*)(void))::dlsym(acoustic, "snd_get_num");
     if ((*snd_get_num) == 0 ) {
-        LOGD("Could not open snd_get_num()");
+        LOGE("Could not open snd_get_num()");
     }
 
     mNumBTEndpoints = snd_get_num();
-    LOGV("mNumBTEndpoints = %d", mNumBTEndpoints);
+    LOGD("mNumBTEndpoints = %d", mNumBTEndpoints);
     mBTEndpoints = new msm_bt_endpoint[mNumBTEndpoints];
     mInit = true;
     LOGV("constructed %d SND endpoints)", mNumBTEndpoints);
@@ -169,7 +169,7 @@ AudioHardware::AudioHardware() :
     snd_get_bt_endpoint(mBTEndpoints);
 
     for (int i = 0; i < mNumBTEndpoints; i++) {
-        LOGV("BT name %s (tx,rx)=(%d,%d)", mBTEndpoints[i].name, mBTEndpoints[i].tx, mBTEndpoints[i].rx);
+        LOGE("BT name %s (tx,rx)=(%d,%d)", mBTEndpoints[i].name, mBTEndpoints[i].tx, mBTEndpoints[i].rx);
     }
 
     // reset voice mode in case media_server crashed and restarted while in call
@@ -411,7 +411,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
             mBluetoothNrec = true;
         } else {
             mBluetoothNrec = false;
-            LOGD("Turning noise reduction and echo cancellation off for BT "
+            LOGI("Turning noise reduction and echo cancellation off for BT "
                  "headset");
         }
     }
@@ -423,12 +423,12 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
             if (!strcasecmp(value.string(), mBTEndpoints[i].name)) {
                 mBluetoothIdTx = mBTEndpoints[i].tx;
                 mBluetoothIdRx = mBTEndpoints[i].rx;
-                LOGD("Using custom acoustic parameters for %s", value.string());
+                LOGI("Using custom acoustic parameters for %s", value.string());
                 break;
             }
         }
         if (mBluetoothIdTx == 0) {
-            LOGD("Using default acoustic parameters "
+            LOGI("Using default acoustic parameters "
                  "(%s not in acoustic database)", value.string());
         }
         doRouting();
@@ -612,10 +612,10 @@ static status_t set_volume_rpc(uint32_t volume)
 status_t AudioHardware::setVoiceVolume(float v)
 {
     if (v < 0.0) {
-        LOGW("setVoiceVolume(%f) under 0.0, assuming 0.0", v);
+        LOGW("setVoiceVolume(%f) under 0.0, assuming 0.0\n", v);
         v = 0.0;
     } else if (v > 1.0) {
-        LOGW("setVoiceVolume(%f) over 1.0, assuming 1.0", v);
+        LOGW("setVoiceVolume(%f) over 1.0, assuming 1.0\n", v);
         v = 1.0;
     }
 
@@ -626,7 +626,8 @@ status_t AudioHardware::setVoiceVolume(float v)
         LOGD("HAC enable: Setting in-call volume to maximum.\n");
         set_volume_rpc(VOICE_VOLUME_MAX);
     } else {
-        LOGI("voice volume %d (range is 0 to %d)", vol, VOICE_VOLUME_MAX);
+        LOGD("setVoiceVolume(%f)\n", v);
+        LOGI("Setting in-call volume to %d (available range is 0 to %d)\n", vol, VOICE_VOLUME_MAX);
         set_volume_rpc(vol); //always set current device
     }
     mVoiceVolume = vol;
@@ -635,7 +636,7 @@ status_t AudioHardware::setVoiceVolume(float v)
 
 status_t AudioHardware::setMasterVolume(float v)
 {
-    LOGI("Set master volume to %f", v);
+    LOGI("Set master volume to %f.\n", v);
     // We return an error code here to let the audioflinger do in-software
     // volume on top of the maximum volume that we set through the SND API.
     // return error - software mixer will handle it
@@ -842,7 +843,7 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device)
     } else if (mMode == AudioSystem::MODE_IN_CALL
                && hac_enable && mHACSetting &&
                device == (int) SND_DEVICE_HANDSET) {
-        LOGD("Update acdb id to hac profile.");
+        LOGE("Update acdb id to hac profile.");
         rx_acdb_id = ACDB_ID_HAC_HANDSET_SPKR;
         tx_acdb_id = ACDB_ID_HAC_HANDSET_MIC;
     } else {
@@ -924,9 +925,7 @@ status_t AudioHardware::doA1026_init(void)
     if (fw_fd < 0) {
         LOGE("Fail to open %s\n", fn);
         goto ld_img_error;
-    } else {
-        LOGD("open %s success\n", fn);
-    }
+    } else LOGI("open %s success\n", fn);
 
     rc = fstat(fw_fd, &fw_stat);
     if (rc < 0) {
@@ -936,7 +935,7 @@ status_t AudioHardware::doA1026_init(void)
 
     remaining = (int)fw_stat.st_size;
 
-    LOGD("Firmware %s size %d\n", fn, remaining);
+    LOGI("Firmware %s size %d\n", fn, remaining);
 
     if (remaining > sizeof(local_vpimg_buf)) {
         LOGE("File %s size %d exceeds internal limit %d\n",
@@ -965,11 +964,11 @@ status_t AudioHardware::doA1026_init(void)
 
     fwimg.buf = local_vpimg_buf;
     fwimg.img_size = (int)(fw_stat.st_size - remaining);
-    LOGD("Total %d bytes put to user space buffer.\n", fwimg.img_size);
+    LOGI("Total %d bytes put to user space buffer.\n", fwimg.img_size);
 
     rc = ioctl(fd_a1026, A1026_BOOTUP_INIT, &fwimg);
     if (!rc) {
-        LOGD("audience_a1026 init OK\n");
+        LOGI("audience_a1026 init OK\n");
         mA1026Init = 1;
     } else
         LOGE("audience_a1026 init failed\n");
@@ -1302,7 +1301,7 @@ status_t AudioHardware::doAudience_A1026_Control(int Mode, bool Record, uint32_t
         } while (--retry);
 
         if (rc < 0) {
-            LOGW("A1026 do hard reset to recover from error!\n");
+            LOGE("A1026 do hard reset to recover from error!\n");
             rc = doA1026_init(); /* A1026 needs to do hard reset! */
             if (!rc) {
                 /* after doA1026_init(), fd_a1026 is -1*/
@@ -1523,7 +1522,7 @@ AudioHardware::AudioStreamInMSM72xx *AudioHardware::getActiveInput_l()
     for (size_t i = 0; i < mInputs.size(); i++) {
         // return first input found not being in standby mode
         // as only one input can be in this state
-        if (!mInputs[i]->checkStandby()) {
+        if (mInputs[i]->state() > AudioStreamInMSM72xx::AUDIO_INPUT_CLOSED) {
             return mInputs[i];
         }
     }
@@ -1643,6 +1642,8 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
             LOGE("Cannot start pcm playback");
             goto Error;
         }
+
+        mStandby = false;
     }
 
     while (count) {
@@ -1651,39 +1652,39 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
             count -= written;
             p += written;
         } else {
-            if (errno != EAGAIN) {
-                status = written;
-                goto Error;
-            }
+            if (errno != EAGAIN) return written;
             mRetryCount++;
-            LOGD("EAGAIN - retry");
+            LOGW("EAGAIN - retry");
         }
     }
 
     return bytes;
 
 Error:
-
-    standby();
-
+    if (mFd >= 0) {
+        ::close(mFd);
+        mFd = -1;
+    }
     // Simulate audio output timing in case of error
-    usleep((((bytes * 1000) / frameSize()) * 1000) / sampleRate());
+    usleep(bytes * 1000000 / frameSize() / sampleRate());
+    release_wake_lock(kOutputWakelockStr);
     return status;
 }
 
 status_t AudioHardware::AudioStreamOutMSM72xx::standby()
 {
-    if (!mStandby) {
-        LOGD("AudioHardware pcm playback is going to standby.");
-        if (mFd >= 0) {
-            ::close(mFd);
-            mFd = -1;
+    status_t status = NO_ERROR;
+    if (!mStandby && mFd >= 0) {
+        ::close(mFd);
+        mFd = -1;
         }
         LOGV("release output wakelock");
         release_wake_lock(kOutputWakelockStr);
         mStandby = true;
     }
-    return NO_ERROR;
+    mStandby = true;
+    LOGI("AudioHardware pcm playback is going to standby.");
+    return status;
 }
 
 status_t AudioHardware::AudioStreamOutMSM72xx::dump(int fd, const Vector<String16>& args)
@@ -1766,7 +1767,7 @@ status_t AudioHardware::AudioStreamOutMSM72xx::getRenderPosition(uint32_t *dspFr
 // ----------------------------------------------------------------------------
 
 AudioHardware::AudioStreamInMSM72xx::AudioStreamInMSM72xx() :
-    mHardware(0), mFd(-1), mStandby(true), mRetryCount(0),
+    mHardware(0), mFd(-1), mState(AUDIO_INPUT_CLOSED), mRetryCount(0),
     mFormat(AUDIO_HW_IN_FORMAT), mChannels(AUDIO_HW_IN_CHANNELS),
     mSampleRate(AUDIO_HW_IN_SAMPLERATE), mBufferSize(AUDIO_HW_IN_BUFSZ),
     mAcoustics((AudioSystem::audio_in_acoustics)0), mDevices(0)
@@ -1834,53 +1835,111 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             Mutex::Autolock lock(mHardware->mLock);
             LOGV("acquire input wakelock");
             acquire_wake_lock(PARTIAL_WAKE_LOCK, kInputWakelockStr);
-            // open audio input device
-            status = ::open("/dev/msm_pcm_in", O_RDWR);
-            if (status < 0) {
-                LOGE("Cannot open /dev/msm_pcm_in errno: %d", errno);
+    // open audio input device
+    status_t status = ::open("/dev/msm_pcm_in", O_RDWR);
+    if (status < 0) {
+        LOGE("Cannot open /dev/msm_pcm_in errno: %d", errno);
                 LOGV("release input wakelock");
                 release_wake_lock(kInputWakelockStr);
-                goto Error;
-            }
-            mFd = status;
-            mStandby = false;
+        goto Error;
+    }
+    mFd = status;
+    mBufferSize = hw->getBufferSize(*pRate, AudioSystem::popCount(*pChannels));
 
-            // configuration
-            LOGV("get config");
-            struct msm_audio_config config;
-            status = ioctl(mFd, AUDIO_GET_CONFIG, &config);
-            if (status < 0) {
-                LOGE("Cannot read config");
-                goto Error;
-            }
+    // configuration
+    LOGV("get config");
+    struct msm_audio_config config;
+    status = ioctl(mFd, AUDIO_GET_CONFIG, &config);
+    if (status < 0) {
+        LOGE("Cannot read config");
+        goto Error;
+    }
 
-            LOGV("set config");
-            config.channel_count = AudioSystem::popCount(mChannels);
-            config.sample_rate = mSampleRate;
-            config.buffer_size = mBufferSize;
-            config.buffer_count = 2;
-            config.codec_type = CODEC_TYPE_PCM;
-            status = ioctl(mFd, AUDIO_SET_CONFIG, &config);
-            if (status < 0) {
-                LOGE("Cannot set config");
-                goto Error;
+    LOGV("set config");
+    config.channel_count = AudioSystem::popCount(*pChannels);
+    config.sample_rate = *pRate;
+    config.buffer_size = mBufferSize;
+    config.buffer_count = 2;
+    config.codec_type = CODEC_TYPE_PCM;
+    status = ioctl(mFd, AUDIO_SET_CONFIG, &config);
+    if (status < 0) {
+        LOGE("Cannot set config");
+        if (ioctl(mFd, AUDIO_GET_CONFIG, &config) == 0) {
+            if (config.channel_count == 1) {
+                *pChannels = AudioSystem::CHANNEL_IN_MONO;
+            } else {
+                *pChannels = AudioSystem::CHANNEL_IN_STEREO;
             }
+            *pRate = config.sample_rate;
+        }
+        goto Error;
+    }
 
+    LOGV("confirm config");
+    status = ioctl(mFd, AUDIO_GET_CONFIG, &config);
+    if (status < 0) {
+        LOGE("Cannot read config");
+        goto Error;
+    }
             LOGV("buffer_size: %u", config.buffer_size);
             LOGV("buffer_count: %u", config.buffer_count);
             LOGV("channel_count: %u", config.channel_count);
             LOGV("sample_rate: %u", config.sample_rate);
-        }
 
+    mDevices = devices;
+    mFormat = AUDIO_HW_IN_FORMAT;
+    mChannels = *pChannels;
+    mSampleRate = config.sample_rate;
+    mBufferSize = config.buffer_size;
+
+    //mHardware->setMicMute_nosync(false);
+    mState = AUDIO_INPUT_OPENED;
+
+    return NO_ERROR;
+
+Error:
+    if (mFd >= 0) {
+        ::close(mFd);
+        mFd = -1;
+    }
+    return status;
+}
+
+AudioHardware::AudioStreamInMSM72xx::~AudioStreamInMSM72xx()
+{
+    LOGV("AudioStreamInMSM72xx destructor");
+    standby();
+}
+
+ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
+{
+    LOGV("AudioStreamInMSM72xx::read(%p, %ld)", buffer, bytes);
+    if (!mHardware) return -1;
+
+    size_t count = bytes;
+    uint8_t* p = static_cast<uint8_t*>(buffer);
+
+    if (mState < AUDIO_INPUT_OPENED) {
+        Mutex::Autolock lock(mHardware->mLock);
+        if (set(mHardware, mDevices, &mFormat, &mChannels, &mSampleRate, mAcoustics) != NO_ERROR) {
+            return -1;
+        }
+    }
+
+    if (mState < AUDIO_INPUT_STARTED) {
+        mState = AUDIO_INPUT_STARTED;
         mHardware->set_mRecordState(1);
         // make sure a1026 config is re-applied even is input device is not changed
         mHardware->clearCurDevice();
         mHardware->doRouting();
 
+        LOGV("acquire input wakelock");
+        acquire_wake_lock(PARTIAL_WAKE_LOCK, kInputWakelockStr);
         uint32_t acdb_id = mHardware->getACDB(MOD_REC, mHardware->get_snd_dev());
         if (ioctl(mFd, AUDIO_START, &acdb_id)) {
             LOGE("Error starting record");
-            goto Error;
+            standby();
+            return -1;
         }
     }
 
@@ -1890,12 +1949,9 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             count -= bytesRead;
             p += bytesRead;
         } else {
-            if (errno != EAGAIN) {
-                status = bytesRead;
-                goto Error;
-            }
+            if (errno != EAGAIN) return bytesRead;
             mRetryCount++;
-            LOGD("EAGAIN - retrying");
+            LOGW("EAGAIN - retrying");
         }
     }
     return bytes;
@@ -1911,25 +1967,25 @@ Error:
 
 status_t AudioHardware::AudioStreamInMSM72xx::standby()
 {
-    if (!mStandby) {
-        LOGD("AudioHardware PCM record is going to standby.");
+    if (mState > AUDIO_INPUT_CLOSED) {
         if (mFd >= 0) {
             ::close(mFd);
             mFd = -1;
         }
+        mState = AUDIO_INPUT_CLOSED;
         LOGV("release input wakelock");
         release_wake_lock(kInputWakelockStr);
-
-        mStandby = true;
-
-        if (!mHardware) return -1;
-
-        mHardware->set_mRecordState(0);
-        // make sure a1026 config is re-applied even is input device is not changed
-        mHardware->clearCurDevice();
-        mHardware->doRouting();
     }
 
+    if (!mHardware) return -1;
+
+    mHardware->set_mRecordState(0);
+    // make sure a1026 config is re-applied even is input device is not changed
+    mHardware->clearCurDevice();
+    mHardware->doRouting();
+    }
+
+    LOGI("AudioHardware PCM record is going to standby.");
     return NO_ERROR;
 }
 
@@ -1956,7 +2012,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::dump(int fd, const Vector<String16
     result.append(buffer);
     snprintf(buffer, SIZE, "\tmFd count: %d\n", mFd);
     result.append(buffer);
-    snprintf(buffer, SIZE, "\tmStandby: %d\n", mStandby);
+    snprintf(buffer, SIZE, "\tmState: %d\n", mState);
     result.append(buffer);
     snprintf(buffer, SIZE, "\tmRetryCount: %d\n", mRetryCount);
     result.append(buffer);
@@ -1969,16 +2025,15 @@ status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyVa
     AudioParameter param = AudioParameter(keyValuePairs);
     status_t status = NO_ERROR;
     int device;
-    String8 key = String8(AudioParameter::keyInputSource);
-    int source;
+    String8 key = String8(KEY_A1026_VR_MODE);
+    int enabled;
     LOGV("AudioStreamInMSM72xx::setParameters() %s", keyValuePairs.string());
 
-    // reading input source for voice recognition mode parameter
-    if (param.getInt(key, source) == NO_ERROR) {
-        LOGV("set input source %d", source);
-        int uses_vr = (source == AUDIO_SOURCE_VOICE_RECOGNITION);
-        vr_mode_change = (vr_mode_enabled != uses_vr);
-        vr_mode_enabled = uses_vr;
+    // reading voice recognition mode parameter
+    if (param.getInt(key, enabled) == NO_ERROR) {
+        LOGV("set vr_mode_enabled to %d", enabled);
+        vr_mode_change = (vr_mode_enabled != enabled);
+        vr_mode_enabled = enabled;
         param.remove(key);
     }
 
