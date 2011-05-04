@@ -35,8 +35,6 @@ msm7k_adreno_dirs := $(common_msm_dirs) boot libgralloc-qsd8k $(LIBAUDIO)
 qsd8k_dirs := $(common_msm_dirs) libgralloc-qsd8k libaudio-qsd8k dspcrashd
 msm7x30_dirs := liblights libgralloc-qsd8k $(LIBRPC) libaudio-qdsp5v2 liboverlay
 
-ifeq ($(TARGET_BOARD_PLATFORM),msm7k)
-  include $(call all-named-subdir-makefiles,$(msm7k_dirs))
 ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
     ### QSD8k
     include $(call all-named-subdir-makefiles,$(qsd8k_dirs))
