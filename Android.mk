@@ -37,7 +37,6 @@ msm7x30_dirs := liblights libgralloc-qsd8k $(LIBRPC) libaudio-qdsp5v2 liboverlay
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm7k)
   include $(call all-named-subdir-makefiles,$(msm7k_dirs))
-else
 ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
     ### QSD8k
     include $(call all-named-subdir-makefiles,$(qsd8k_dirs))
